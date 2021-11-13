@@ -18,6 +18,7 @@ class Server:
 			print('Socket is ready to')
 			clientInfo = {}
 			clientInfo['rtspSocket'] = rtspSocket.accept()
+			clientInfo['serverPort'] = SERVER_PORT
 			ServerWorker(clientInfo).run()		
 
 if __name__ == "__main__":

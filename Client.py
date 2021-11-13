@@ -45,14 +45,14 @@ class Client:
         self.setup = Button(self.master, width=15, padx=3, pady=3)
         self.setup["text"] = "Describe"
         self.setup["command"] = self.decribeMovie
-        self.setup.grid(row=1, column=0, padx=2, pady=2)
+        self.setup.grid(row=1, column=1, padx=2, pady=2)
 
 
         # Create Setup button
         self.setup = Button(self.master, width=15, padx=3, pady=3)
         self.setup["text"] = "Setup"
         self.setup["command"] = self.setupMovie
-        self.setup.grid(row=1, column=1, padx=2, pady=2)
+        self.setup.grid(row=1, column=0, padx=2, pady=2)
 
         # Create Play button
         self.start = Button(self.master, width=15, padx=3, pady=3)
@@ -86,7 +86,6 @@ class Client:
             self.sendRtspRequest(self.SETUP)
 
     def decribeMovie(self):
-        print("Im here")
         self.sendRtspRequest(self.DESCRIBE)
 
     def exitClient(self):
@@ -132,7 +131,7 @@ class Client:
 
                     currFrameNbr = rtpPacket.seqNum()
 
-                    print("Curren Seq Num: " + str(currFrameNbr))
+                    print("Current Seq Num: " + str(currFrameNbr))
 
                     if currFrameNbr > self.frameNbr:
                         self.frameNbr = currFrameNbr
@@ -296,6 +295,9 @@ class Client:
         """Parse the RTSP reply from the server."""
         # TODO
         lines = data.split("\n")
+        if 'Description' in data:
+            print(data)
+            return
         seqNum = int(lines[1].split(" ")[1])
 
         if seqNum == self.rtspSeq:

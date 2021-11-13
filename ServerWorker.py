@@ -9,6 +9,7 @@ class ServerWorker:
 	PLAY = 'PLAY'
 	PAUSE = 'PAUSE'
 	TEARDOWN = 'TEARDOWN'
+	DESCRIBE = 'DESCRIBE'
 	
 	INIT = 0
 	READY = 1
@@ -49,8 +50,14 @@ class ServerWorker:
 		# Get the RTSP sequence number 
 		seq = request[1].split(' ')
 		
+		if requestType == 'DESCRIBE':
+			print("processing DESCRIBE\n"
+			self.replyRtsp(self.OK_200, seq[1])
+			self.sendDescription()
+
+
 		# Process SETUP request
-		if requestType == self.SETUP:
+		elif requestType == self.SETUP:
 			if self.state == self.INIT:
 				# Update state
 				print("processing SETUP\n")
@@ -129,6 +136,15 @@ class ServerWorker:
 					print('-'*60)
 					traceback.print_exc(file=sys.stdout)
 					print('-'*60)
+
+	def sendDescription(self):
+
+			body = '\nSession Description: \n\n'+'m=video ' + str(self.clientInfo['serverPort']) + ' RTP/AVP ' + str('26') + '\n'
+			body += 'a=control:streamid=' + str(self.clientInfo['session']) + '\n'
+			body += 'a=mimetype:string;\"video/MJPEG\"' + '\n'
+
+			self.clientInfo['rtspSocket'][0].send(body.encode())
+
 
 	def makeRtp(self, payload, frameNbr):
 		"""RTP-packetize the video data."""
