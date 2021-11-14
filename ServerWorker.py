@@ -51,7 +51,7 @@ class ServerWorker:
 		seq = request[1].split(' ')
 		
 		if requestType == 'DESCRIBE':
-			print("processing DESCRIBE\n"
+			print("processing DESCRIBE\n")
 			self.replyRtsp(self.OK_200, seq[1])
 			self.sendDescription()
 

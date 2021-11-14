@@ -2,6 +2,7 @@ from tkinter import *
 import tkinter.messagebox
 from PIL import Image, ImageTk
 import socket, threading, sys, traceback, os
+import time
 
 from RtpPacket import RtpPacket
 
@@ -36,6 +37,13 @@ class Client:
         self.teardownAcked = 0
         self.connectToServer()
         self.frameNbr = 0
+        #EXTEND FEATURE
+        self.expFrameNbr = 0
+        self.statPacketsLost = 0
+        self.statTotalBytes = 0
+        self.statTotalPlayTime = 0
+        self.startTime = 0
+        self.totalFrames = 0
 
     # THIS GUI IS JUST FOR REFERENCE ONLY, STUDENTS HAVE TO CREATE THEIR OWN GUI
     def createWidgets(self):
@@ -79,6 +87,14 @@ class Client:
         self.label.grid(
             row=0, column=0, columnspan=4, sticky=W + E + N + S, padx=5, pady=5
         )
+        self.stats = []
+        for i in range(5):
+            stat = Label(self.master, height=1)
+            stat.grid(row=i +2, column=0, columnspan=4, sticky=W, padx=5, pady=5)
+            self.stats.append(stat)
+
+        print(self.stats)
+
 
     def setupMovie(self):
         """Setup button handler."""
@@ -120,7 +136,7 @@ class Client:
         # TODO
         while True:
 
-            try:
+            # try:
                 data = self.rtpSocket.recv(20480)
 
                 if data:
@@ -128,6 +144,8 @@ class Client:
                     rtpPacket = RtpPacket()
 
                     rtpPacket.decode(data)
+                    
+                    self.expFrameNbr += 1
 
                     currFrameNbr = rtpPacket.seqNum()
 
@@ -135,19 +153,38 @@ class Client:
 
                     if currFrameNbr > self.frameNbr:
                         self.frameNbr = currFrameNbr
-                        self.updateMovie(self.writeFrame(rtpPacket.getPayload()))
-            except:
+                        payload = rtpPacket.getPayload()
+                        self.updateMovie(self.writeFrame(payload))
+                        self.totalFrames += 1
+                    
+                    if self.expFrameNbr != currFrameNbr:
+                        self.statPacketsLost +=1
 
-                if self.playEvent.is_set():
-                    break
+                    payload_len = len(payload)
+                   
+                    self.statTotalBytes +=payload_len
 
-                if self.teardownAcked == 1:
+                    curTime = time.time()
+                    self.statTotalPlayTime += curTime - self.startTime
+                    self.operationTime = curTime - self.startTime
+                    self.startTime = curTime
+                    self.stats[0]["text"] = "Frame per second (FPS): "+ str(format(1/self.operationTime,".2f"))
+                    self.stats[1]["text"] = ""'Data received: ' + str(self.statTotalBytes) + ' bytes'
+                    self.stats[2]["text"] = 'Data Rate: ' + str(format(payload_len / self.operationTime,".2f")) + ' bytes/s' + '\t\tAverage: ' + str(format(self.statTotalBytes / self.statTotalPlayTime,".2f")) + ' bytes/s'
+                    self.stats[3]["text"] = 'Packets Lost: '  + str(self.statPacketsLost) + ' packets'
+                    self.stats[4]["text"] = 'Packets Lost Rate: ' + str(float(self.statPacketsLost / currFrameNbr))             
+            # except:
 
-                    self.rtpSocket.shutdown(socket.SHUT_RDWR)
+            #     if self.playEvent.is_set():
+            #         break
 
-                    self.rtpSocket.close()
+            #     if self.teardownAcked == 1:
 
-                    break
+            #         self.rtpSocket.shutdown(socket.SHUT_RDWR)
+
+            #         self.rtpSocket.close()
+
+            #         break
 
     def writeFrame(self, data):
         """Write the received frame to a temp image file. Return the image file."""
