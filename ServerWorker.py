@@ -10,6 +10,8 @@ class ServerWorker:
 	PAUSE = 'PAUSE'
 	TEARDOWN = 'TEARDOWN'
 	DESCRIBE = 'DESCRIBE'
+	FORWARD = 'FORWARD'
+	BACKWARD = 'BACKWARD'
 	
 	INIT = 0
 	READY = 1
@@ -90,6 +92,8 @@ class ServerWorker:
 				
 				# Create a new thread and start sending RTP packets
 				self.clientInfo['event'] = threading.Event()
+				self.clientInfo['forward'] = threading.Event()
+				self.clientInfo['backward'] = threading.Event()
 				self.clientInfo['worker']= threading.Thread(target=self.sendRtp) 
 				self.clientInfo['worker'].start()
 		
@@ -113,18 +117,43 @@ class ServerWorker:
 			
 			# Close the RTP socket
 			self.clientInfo['rtpSocket'].close()
-   
+		
+		elif requestType == self.FORWARD:
+    			
+			print("processing FORWARD\n")
+			self.clientInfo['forward'].set()
+			self.replyRtsp(self.OK_200, seq[1])
+		
+
+		elif requestType == self.BACKWARD:
+    		
+			print("processing BACKWARD\n")
+			self.clientInfo['backward'].set()
+			self.replyRtsp(self.OK_200, seq[1])	
+
 			
 	def sendRtp(self):
 		"""Send RTP packets over UDP."""
 		while True:
-			self.clientInfo['event'].wait(0.05) 
+			self.clientInfo['event'].wait(0.01)
+			self.clientInfo['forward'].wait(0.01) 
+			self.clientInfo['backward'].wait(0.01)  
 			
 			# Stop sending if request is PAUSE or TEARDOWN
 			if self.clientInfo['event'].isSet(): 
 				break 
 				
-			data = self.clientInfo['videoStream'].nextFrame()
+			# data = self.clientInfo['videoStream'].nextFrame()
+			data = b''
+			if self.clientInfo['forward'].isSet():
+				data = self.clientInfo['videoStream'].forward()
+				self.clientInfo['forward'].clear()
+			elif self.clientInfo['backward'].isSet():
+				data = self.clientInfo['videoStream'].backward()
+				self.clientInfo['backward'].clear()
+			else: 
+				data = self.clientInfo['videoStream'].nextFrame()
+    
 			if data: 
 				frameNumber = self.clientInfo['videoStream'].frameNbr()
 				try:

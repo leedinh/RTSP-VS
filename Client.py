@@ -21,6 +21,8 @@ class Client:
     PAUSE = 2
     TEARDOWN = 3
     DESCRIBE = 4
+    FORWARD = 5
+    BACKWARD = 6
 
     # Initiation..
     def __init__(self, master, serveraddr, serverport, rtpport, filename):
@@ -50,42 +52,54 @@ class Client:
         """Build GUI."""
 
         # Create Describe button
-        self.setup = Button(self.master, width=15, padx=3, pady=3)
+        self.setup = Button(self.master, width=12, padx=3, pady=3)
         self.setup["text"] = "Describe"
         self.setup["command"] = self.decribeMovie
-        self.setup.grid(row=1, column=1, padx=2, pady=2)
+        self.setup.grid(row=1, column=0, padx=2, pady=2)
 
 
         # Create Setup button
-        self.setup = Button(self.master, width=15, padx=3, pady=3)
-        self.setup["text"] = "Setup"
-        self.setup["command"] = self.setupMovie
-        self.setup.grid(row=1, column=0, padx=2, pady=2)
+        # self.setup = Button(self.master, width=12, padx=3, pady=3)
+        # self.setup["text"] = "Setup"
+        # self.setup["command"] = self.setupMovie
+        # self.setup.grid(row=1, column=0, padx=2, pady=2)
 
         # Create Play button
-        self.start = Button(self.master, width=15, padx=3, pady=3)
+        self.start = Button(self.master, width=12, padx=3, pady=3)
         self.start["text"] = "Play"
         self.start["command"] = self.playMovie
-        self.start.grid(row=1, column=2, padx=2, pady=2)
+        self.start.grid(row=1, column=1, padx=2, pady=2)
 
+        self.forward = Button(self.master, width=12, padx=3, pady=3)
+        self.forward["text"] = "Forward"
+        self.forward["command"] = self.forwardMovie
+        self.forward.grid(row=1, column=2, padx=2, pady=2)
+
+        self.backward = Button(self.master, width=12, padx=3, pady=3)
+        self.backward["text"] = "Backward"
+        self.backward["command"] = self.backwardMovie
+        self.backward.grid(row=1, column=3, padx=2, pady=2)
+
+        
+        
         # Create Pause button
-        self.pause = Button(self.master, width=15, padx=3, pady=3)
+        self.pause = Button(self.master, width=12, padx=3, pady=3)
         self.pause["text"] = "Pause"
         self.pause["command"] = self.pauseMovie
-        self.pause.grid(row=1, column=3, padx=2, pady=2)
+        self.pause.grid(row=1, column=4, padx=2, pady=2)
 
         # Create Teardown button
-        self.teardown = Button(self.master, width=15, padx=3, pady=3)
+        self.teardown = Button(self.master, width=12, padx=3, pady=3)
         self.teardown["text"] = "Teardown"
         self.teardown["command"] = self.exitClient
-        self.teardown.grid(row=1, column=4, padx=2, pady=2)
+        self.teardown.grid(row=1, column=5, padx=2, pady=2)
 
         
 
         # Create a label to display the movie
         self.label = Label(self.master, height=19)
         self.label.grid(
-            row=0, column=0, columnspan=4, sticky=W + E + N + S, padx=5, pady=5
+            row=0, column=1, columnspan=5, sticky=W + E + N + S, padx=7, pady=5
         )
         self.stats = []
         for i in range(5):
@@ -93,13 +107,11 @@ class Client:
             stat.grid(row=i +2, column=0, columnspan=4, sticky=W, padx=5, pady=5)
             self.stats.append(stat)
 
-        print(self.stats)
 
 
     def setupMovie(self):
         """Setup button handler."""
-        if self.state == self.INIT:
-            self.sendRtspRequest(self.SETUP)
+        pass
 
     def decribeMovie(self):
         self.sendRtspRequest(self.DESCRIBE)
@@ -118,8 +130,19 @@ class Client:
         if self.state == self.PLAYING:
             self.sendRtspRequest(self.PAUSE)
 
+    def forwardMovie(self):
+        self.sendRtspRequest(self.FORWARD)
+
+    def backwardMovie(self):
+        self.sendRtspRequest(self.BACKWARD)
+
     def playMovie(self):
         """Play button handler."""
+        wait = True
+        if self.state == self.INIT:
+            self.setupEvent = threading.Event()
+            self.sendRtspRequest(self.SETUP)
+            wait = self.setupEvent.wait(timeout = 0.5)
 
         if self.state == self.READY:
 
@@ -136,7 +159,7 @@ class Client:
         # TODO
         while True:
 
-            # try:
+            try:
                 data = self.rtpSocket.recv(20480)
 
                 if data:
@@ -170,21 +193,21 @@ class Client:
                     self.startTime = curTime
                     self.stats[0]["text"] = "Frame per second (FPS): "+ str(format(1/self.operationTime,".2f"))
                     self.stats[1]["text"] = ""'Data received: ' + str(self.statTotalBytes) + ' bytes'
-                    self.stats[2]["text"] = 'Data Rate: ' + str(format(payload_len / self.operationTime,".2f")) + ' bytes/s' + '\t\tAverage: ' + str(format(self.statTotalBytes / self.statTotalPlayTime,".2f")) + ' bytes/s'
+                    self.stats[2]["text"] = 'Data Rate: ' + str(format(payload_len / self.operationTime,".2f")) + ' bytes/s'
                     self.stats[3]["text"] = 'Packets Lost: '  + str(self.statPacketsLost) + ' packets'
                     self.stats[4]["text"] = 'Packets Lost Rate: ' + str(float(self.statPacketsLost / currFrameNbr))             
-            # except:
+            except:
 
-            #     if self.playEvent.is_set():
-            #         break
+                if self.playEvent.is_set():
+                    break
 
-            #     if self.teardownAcked == 1:
+                if self.teardownAcked == 1:
 
-            #         self.rtpSocket.shutdown(socket.SHUT_RDWR)
+                    self.rtpSocket.shutdown(socket.SHUT_RDWR)
 
-            #         self.rtpSocket.close()
+                    self.rtpSocket.close()
 
-            #         break
+                    break
 
     def writeFrame(self, data):
         """Write the received frame to a temp image file. Return the image file."""
@@ -304,6 +327,17 @@ class Client:
                 + str(self.sessionId)
             )
             self.requestSent = self.TEARDOWN
+        
+        elif requestCode == self.FORWARD:
+            self.rtspSeq += 1
+            request = 'FORWARD ' + self.fileName + ' RTSP/1.0\nCSeq: ' + str(self.rtspSeq) + '\nSession: ' + str(self.sessionId)
+            self.requestSent = self.FORWARD
+        
+        elif requestCode == self.BACKWARD:
+            self.rtspSeq += 1
+            request = 'BACKWARD ' + self.fileName + ' RTSP/1.0\nCSeq: ' + str(self.rtspSeq) + '\nSession: ' + str(self.sessionId)
+            self.requestSent = self.BACKWARD
+
         else:
             return
 
