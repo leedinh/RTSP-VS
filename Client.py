@@ -99,7 +99,7 @@ class Client:
         # Create a label to display the movie
         self.label = Label(self.master, height=19)
         self.label.grid(
-            row=0, column=1, columnspan=5, sticky=W + E + N + S, padx=7, pady=5
+            row=0, column=0, columnspan=5, sticky=W + E + N + S, padx=7, pady=5
         )
         self.stats = []
         for i in range(5):
